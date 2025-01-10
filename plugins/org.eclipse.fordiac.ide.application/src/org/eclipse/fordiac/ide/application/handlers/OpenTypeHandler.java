@@ -21,41 +21,42 @@ import org.eclipse.fordiac.ide.model.libraryElement.FBNetwork;
 import org.eclipse.fordiac.ide.model.libraryElement.FBNetworkElement;
 import org.eclipse.fordiac.ide.model.libraryElement.IInterfaceElement;
 import org.eclipse.fordiac.ide.model.libraryElement.LibraryElement;
+import org.eclipse.fordiac.ide.model.ui.actions.OpenListenerManager;
 import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.eclipse.gef.EditPart;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.ISources;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.handlers.HandlerUtil;
-import org.eclipse.ui.part.FileEditorInput;
 
 public class OpenTypeHandler extends AbstractHandler {
 
 	@Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
 		final IStructuredSelection sel = HandlerUtil.getCurrentStructuredSelection(event);
-		final IFile typeFile = getSelectedTypeFile(sel);
-		if (typeFile != null) {
-			openTypeEditor(typeFile);
+		final LibraryElement type = getSelectedType(sel);
+		if (getFileFromType(type) != null) {
+			openTypeEditor(type);
 		}
+
 		return Status.OK_STATUS;
 	}
 
-	private static void openTypeEditor(final IFile file) {
+	private static void openTypeEditor(final LibraryElement type) {
 		final IWorkbench workbench = PlatformUI.getWorkbench();
 		if (null != workbench) {
 			final IWorkbenchWindow activeWorkbenchWindow = workbench.getActiveWorkbenchWindow();
 			if (null != activeWorkbenchWindow) {
-				final IWorkbenchPage activePage = activeWorkbenchWindow.getActivePage();
-				final IEditorDescriptor desc = PlatformUI.getWorkbench().getEditorRegistry()
-						.getDefaultEditor(file.getName());
+//				final IWorkbenchPage activePage = activeWorkbenchWindow.getActivePage();
+//				final IEditorDescriptor desc = PlatformUI.getWorkbench().getEditorRegistry()
+//						.getDefaultEditor(file.getName());
 				try {
-					activePage.openEditor(new FileEditorInput(file), desc.getId());
+					OpenListenerManager.openEditor(type);
+
+//					activePage.openEditor(new FileEditorInput(file), desc.getId());
 				} catch (final Exception e) {
 					FordiacLogHelper.logError(e.getMessage(), e);
 				}
@@ -67,10 +68,11 @@ public class OpenTypeHandler extends AbstractHandler {
 	public void setEnabled(final Object evaluationContext) {
 		final ISelection sel = (ISelection) HandlerUtil.getVariable(evaluationContext,
 				ISources.ACTIVE_CURRENT_SELECTION_NAME);
-		setBaseEnabled(getSelectedTypeFile(sel) != null);
+
+		setBaseEnabled(getFileFromType(getSelectedType(sel)) != null);
 	}
 
-	private static IFile getSelectedTypeFile(final ISelection sel) {
+	private static LibraryElement getSelectedType(final ISelection sel) {
 		if ((sel instanceof final IStructuredSelection structSel) && !sel.isEmpty() && (structSel.size() == 1)) {
 			Object obj = structSel.getFirstElement();
 			if (obj instanceof final EditPart ep) {
@@ -84,9 +86,15 @@ public class OpenTypeHandler extends AbstractHandler {
 			default -> null;
 			};
 
-			if ((type != null) && (type.getTypeEntry() != null)) {
-				return type.getTypeEntry().getFile();
-			}
+			return type;
+		}
+
+		return null;
+	}
+
+	private static IFile getFileFromType(final LibraryElement type) {
+		if ((type != null) && (type.getTypeEntry() != null)) {
+			return type.getTypeEntry().getFile();
 		}
 
 		return null;
