@@ -44,7 +44,7 @@ import org.eclipse.ui.PlatformUI;
 
 public class HierachyManagerUpdateListener extends QualNameChangeListener {
 
-	private static EObject loadPlantHierachy(final IProject project) {
+	public static EObject loadPlantHierachy(final IProject project) {
 		final Map<String, Object> loadOptions = new HashMap<>();
 		final ResourceSet hierarchyResouceSet = new ResourceSetImpl();
 		hierarchyResouceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put( //
@@ -80,7 +80,7 @@ public class HierachyManagerUpdateListener extends QualNameChangeListener {
 		final List<AbstractOperation> result = new ArrayList<>();
 
 		final List<Leaf> leafs = HierarchyManagerUtil.searchLeaf((RootLevel) rootLevel,
-				leafRef -> leafRef.contains(identifier));
+				leaf -> leaf.getRef().contains(identifier));
 		if (leafs == null || leafs.isEmpty()) {
 			return Collections.emptyList(); // leaf may have been deleted in the meantime
 		}
