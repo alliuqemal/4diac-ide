@@ -10,10 +10,14 @@ import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.Leaf;
 import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.RootLevel;
 import org.eclipse.fordiac.ide.hierarchymanager.ui.listeners.HierachyManagerUpdateListener;
 import org.eclipse.fordiac.ide.hierarchymanager.ui.util.HierarchyManagerUtil;
+import org.eclipse.fordiac.ide.hierarchymanager.ui.view.PlantHierarchyView;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
 import org.eclipse.ltk.core.refactoring.participants.DeleteParticipant;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PlatformUI;
 
 public class DeleteLibraryElementParticipant extends DeleteParticipant {
 
@@ -25,13 +29,24 @@ public class DeleteLibraryElementParticipant extends DeleteParticipant {
 	protected boolean initialize(final Object element) {
 
 		if (element instanceof final IFile file) {
-
 			this.file = file;
-
-			plantHierarchy = (RootLevel) HierachyManagerUpdateListener.loadPlantHierachy(file.getProject());
-
-			return plantHierarchy != null;
 		}
+
+		Display.getDefault().syncExec(() -> {
+			final IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+			PlantHierarchyView view = null;
+
+			if (page != null) {
+				view = (PlantHierarchyView) page.findView("org.eclipse.fordiac.ide.hierarchymanager.view"); //$NON-NLS-1$
+
+			}
+
+			if (view != null) {
+				plantHierarchy = (RootLevel) view.getCommonViewer().getInput();
+			} else if (element instanceof final IFile file) {
+				plantHierarchy = (RootLevel) HierachyManagerUpdateListener.loadPlantHierachy(file.getProject());
+			}
+		});
 
 		return true;
 	}
@@ -57,7 +72,7 @@ public class DeleteLibraryElementParticipant extends DeleteParticipant {
 					leaf -> leaf.getContainerFileName().contains(file.getName()));
 
 			if (!leaves.isEmpty()) {
-				return new SafePlantElementDeletionChange(plantHierarchy);
+				return new SafePlantElementDeletionChange(plantHierarchy, leaves);
 			}
 
 			return null;

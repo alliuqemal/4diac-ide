@@ -104,7 +104,7 @@ public class HierachyManagerUpdateListener extends QualNameChangeListener {
 		AbstractHierarchyHandler.executeOperation((AbstractChangeHierarchyOperation) op);
 	}
 
-	private static RootLevel getPlantHierachy(final TypeEntry key) {
+	public static RootLevel getPlantHierachy(final TypeEntry key) {
 		final IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 		if (page != null) {
 			final PlantHierarchyView view = (PlantHierarchyView) page
