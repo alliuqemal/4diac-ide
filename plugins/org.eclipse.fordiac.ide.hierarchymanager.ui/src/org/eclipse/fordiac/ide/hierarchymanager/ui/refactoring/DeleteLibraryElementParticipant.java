@@ -22,17 +22,12 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.Leaf;
 import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.RootLevel;
-import org.eclipse.fordiac.ide.hierarchymanager.ui.listeners.HierachyManagerUpdateListener;
 import org.eclipse.fordiac.ide.hierarchymanager.ui.util.HierarchyManagerRefactoringUtil;
 import org.eclipse.fordiac.ide.hierarchymanager.ui.util.HierarchyManagerUtil;
-import org.eclipse.fordiac.ide.hierarchymanager.ui.view.PlantHierarchyView;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
 import org.eclipse.ltk.core.refactoring.participants.DeleteParticipant;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.PlatformUI;
 
 public class DeleteLibraryElementParticipant extends DeleteParticipant {
 
@@ -44,30 +39,15 @@ public class DeleteLibraryElementParticipant extends DeleteParticipant {
 	protected boolean initialize(final Object element) {
 
 		if (element instanceof final IResource resource) {
+
+			plantHierarchy = HierarchyManagerRefactoringUtil.getPlantHierarchy(resource.getProject());
+
 			try {
 				this.files = HierarchyManagerRefactoringUtil.getFilesFromResource(resource);
 			} catch (final CoreException e) {
 				return false;
 			}
 		}
-
-		Display.getDefault().syncExec(() -> {
-			final IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-			PlantHierarchyView view = null;
-
-			if (page != null) {
-				view = (PlantHierarchyView) page.findView("org.eclipse.fordiac.ide.hierarchymanager.view"); //$NON-NLS-1$
-			}
-
-			if (view != null) {
-				final Object input = view.getCommonViewer().getInput();
-				if (input instanceof final RootLevel rootLevel) {
-					plantHierarchy = rootLevel;
-				}
-			} else if (element instanceof final IResource resource) {
-				plantHierarchy = (RootLevel) HierachyManagerUpdateListener.loadPlantHierachy(resource.getProject());
-			}
-		});
 
 		return plantHierarchy != null;
 	}

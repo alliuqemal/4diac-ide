@@ -16,72 +16,44 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
+import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.Leaf;
 import org.eclipse.fordiac.ide.hierarchymanager.model.hierarchy.RootLevel;
-import org.eclipse.fordiac.ide.hierarchymanager.ui.listeners.HierachyManagerUpdateListener;
-import org.eclipse.fordiac.ide.hierarchymanager.ui.view.PlantHierarchyView;
+import org.eclipse.fordiac.ide.hierarchymanager.ui.util.HierarchyManagerRefactoringUtil;
+import org.eclipse.fordiac.ide.hierarchymanager.ui.util.HierarchyManagerUtil;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
 import org.eclipse.ltk.core.refactoring.participants.RenameParticipant;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.PlatformUI;
 
 public class RenameFileParticipant extends RenameParticipant {
 
 	private List<IFile> files = new ArrayList<>();
 
-	private RootLevel plantHierarchy;
+	private IResource element;
 
-	private static List<String> ALLOWED_FILE_EXTENSIONS = List.of("sub", "sys");
+	private RootLevel plantHierarchy;
 
 	@Override
 	protected boolean initialize(final Object element) {
 
-		Display.getDefault().syncExec(() -> {
-			final IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-			PlantHierarchyView view = null;
+		if (element instanceof final IResource resource) {
 
-			if (page != null) {
-				view = (PlantHierarchyView) page.findView("org.eclipse.fordiac.ide.hierarchymanager.view"); //$NON-NLS-1$
-			}
+			this.element = resource;
 
-			if (view != null) {
-				plantHierarchy = (RootLevel) view.getCommonViewer().getInput();
-			} else if (element instanceof final IResource resource) {
-				plantHierarchy = (RootLevel) HierachyManagerUpdateListener.loadPlantHierachy(resource.getProject());
-			}
-		});
+			plantHierarchy = HierarchyManagerRefactoringUtil.getPlantHierarchy(resource.getProject());
 
-		if (element instanceof final IFile file) {
-			this.files = new ArrayList<>(List.of(file));
-			return true;
-		}
-		if (element instanceof final IFolder folder) {
 			try {
-				storeFilesFromFolder(folder);
-				return true;
+				this.files = HierarchyManagerRefactoringUtil.getFilesFromResource(resource);
 			} catch (final CoreException e) {
 				return false;
 			}
 		}
 
-		return false;
-	}
-
-	private void storeFilesFromFolder(final IFolder folder) throws CoreException {
-		for (final IResource resource : folder.members()) {
-			if (resource.getType() == IResource.FILE && ALLOWED_FILE_EXTENSIONS.contains(resource.getFileExtension())) {
-				files.add((IFile) resource);
-			} else if (resource.getType() == IResource.FOLDER) {
-				storeFilesFromFolder((IFolder) resource);
-			}
-		}
+		return !(plantHierarchy == null || files.isEmpty());
 	}
 
 	@Override
@@ -98,8 +70,24 @@ public class RenameFileParticipant extends RenameParticipant {
 
 	@Override
 	public Change createChange(final IProgressMonitor pm) throws CoreException, OperationCanceledException {
+
 		try {
 			pm.beginTask("Creating change...", 1); //$NON-NLS-1$
+
+			final List<Leaf> leaves = new ArrayList<>();
+
+			for (final IFile file : files) {
+				final List<Leaf> matches = HierarchyManagerUtil.searchLeaf(plantHierarchy,
+						leaf -> leaf.getContainerFileName().contains(file.getName()));
+
+				leaves.addAll(matches);
+			}
+
+			if (!leaves.isEmpty()) {
+				return new SafeResourceRefactoringChange(plantHierarchy, leaves,
+						HierarchyManagerRefactoringUtil.getOldPath(element),
+						HierarchyManagerRefactoringUtil.getNewPath(element, this.getArguments().getNewName()));
+			}
 
 		} finally {
 			pm.done();
