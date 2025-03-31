@@ -17,7 +17,11 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fordiac.ide.model.helpers.PackageNameHelper;
+import org.eclipse.fordiac.ide.model.libraryElement.LibraryElement;
 import org.eclipse.fordiac.ide.model.search.ModelQuerySpec;
 import org.eclipse.fordiac.ide.model.search.ModelQuerySpec.SearchScope;
 import org.eclipse.fordiac.ide.model.search.ModelSearchQuery;
@@ -32,8 +36,10 @@ public class GlobalConstantsFindReferencesHandler extends FindReferencesHandler 
 	protected void findReferences(final EObject target) {
 		if (target instanceof final STVarDeclaration varDec) {
 			// @formatter:off
+			final EList<EObject> contents = EcoreUtil.getRootContainer(varDec).eResource().getContents();
+			final String packageName = PackageNameHelper.getPackageName((LibraryElement)contents.get(1));
 			final ModelQuerySpec searchSpec = new ModelQuerySpec(
-					varDec.getName(),
+					varDec.getQualifiedName(),
 					false,
 					false,
 					true,
